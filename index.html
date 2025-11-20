@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Commercial Dashboard Integral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#06b6d4', // Cyan
+              accent: '#22c55e', // Green
+              dark: {
+                900: '#020617', // Updated to match var(--bg-dark)
+                800: '#0f172a', // Updated to match var(--bg-panel)
+                700: '#1e293b', // Updated to match var(--bg-card)
+                600: '#334155',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            },
+            animation: {
+              fadeIn: 'fadeIn 0.5s ease-in-out',
+              slideUp: 'slideUp 0.5s ease-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-dark: #020617;
+        --bg-panel: #0f172a;
+        --primary: #06b6d4;
+        --accent: #22c55e;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background: radial-gradient(circle at top right, #1e293b, var(--bg-dark));
+        color: #f1f5f9;
+        overflow: hidden; /* App-like feel */
+      }
+      /* Custom scrollbar for dark theme */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569; 
+      }
+      
+      /* Phone Mockup 3D effect */
+      .perspective-1000 {
+        perspective: 1000px;
+      }
+      .rotate-y-5 {
+        transform: rotateY(-5deg) rotateX(5deg);
+        transition: transform 0.5s ease;
+      }
+      .rotate-y-5:hover {
+        transform: rotateY(0) rotateX(0);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
