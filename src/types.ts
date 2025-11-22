@@ -29,6 +29,7 @@ export interface Lead {
 export interface SubTask {
   id: string;
   title: string;
+  description?: string; // New field for subtask details
   completed: boolean;
 }
 

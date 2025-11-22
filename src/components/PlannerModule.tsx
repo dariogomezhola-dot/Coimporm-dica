@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { PlannerTask, SubTask } from '../types';
-import { Plus, Calendar, User, AlignLeft, MoreHorizontal, CheckCircle2, Circle, Clock, AlertCircle, Trash2, X, Edit3, CheckSquare, ListTodo, MinusCircle } from 'lucide-react';
+import { Plus, Calendar, User, AlignLeft, MoreHorizontal, CheckCircle2, Circle, Clock, AlertCircle, Trash2, X, Edit3, CheckSquare, ListTodo, MinusCircle, GripVertical, Check, Save } from 'lucide-react';
 
 const PlannerModule: React.FC = () => {
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
@@ -19,6 +19,11 @@ const PlannerModule: React.FC = () => {
   // Subtasks State for the Form
   const [subtasks, setSubtasks] = useState<SubTask[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  
+  // Subtask Editing & Dragging State
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
 
   // --- FETCH TASKS ---
   useEffect(() => {
@@ -71,6 +76,7 @@ const PlannerModule: React.FC = () => {
       setFormData({ title: '', description: '', priority: 'MEDIUM', status: 'TODO', dueDate: '', assignee: '', labels: [] });
       setSubtasks([]);
       setNewSubtaskTitle('');
+      setEditingSubtaskId(null);
   };
 
   const openEdit = (task: PlannerTask) => {
@@ -87,6 +93,7 @@ const PlannerModule: React.FC = () => {
       const newItem: SubTask = {
           id: Date.now().toString(),
           title: newSubtaskTitle,
+          description: '',
           completed: false
       };
       setSubtasks([...subtasks, newItem]);
@@ -101,7 +108,32 @@ const PlannerModule: React.FC = () => {
       setSubtasks(subtasks.filter(s => s.id !== id));
   };
 
-  // --- DRAG & DROP ---
+  const updateSubtaskField = (id: string, field: 'title' | 'description', value: string) => {
+      setSubtasks(subtasks.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  // --- SUBTASK DRAG & DROP ---
+  const handleSort = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    
+    // Duplicate items
+    const _subtasks = [...subtasks];
+    
+    // Remove and save the dragged item content
+    const draggedItemContent = _subtasks.splice(dragItem.current, 1)[0];
+
+    // Switch the position
+    _subtasks.splice(dragOverItem.current, 0, draggedItemContent);
+
+    // Reset refs
+    dragItem.current = null;
+    dragOverItem.current = null;
+
+    // Update state
+    setSubtasks(_subtasks);
+  };
+
+  // --- DRAG & DROP FOR TASKS (KANBAN) ---
   const handleDragStart = (e: React.DragEvent, id: string) => {
       e.dataTransfer.setData("taskId", id);
   };
@@ -326,21 +358,85 @@ const PlannerModule: React.FC = () => {
                              </div>
                              
                              <div className="space-y-2 mb-3">
-                                {subtasks.map(sub => (
-                                    <div key={sub.id} className="flex items-center gap-2 group">
+                                {subtasks.map((sub, idx) => (
+                                    <div 
+                                        key={sub.id} 
+                                        className={`flex items-start gap-2 group bg-dark-900 rounded p-2 border transition-colors ${
+                                            editingSubtaskId === sub.id ? 'border-primary shadow shadow-primary/10' : 'border-dark-700/50 hover:border-dark-600'
+                                        }`}
+                                        draggable
+                                        onDragStart={(e) => {
+                                            if(editingSubtaskId) e.preventDefault(); // Disable drag when editing
+                                            else dragItem.current = idx;
+                                        }}
+                                        onDragEnter={(e) => {
+                                             if(!editingSubtaskId) dragOverItem.current = idx;
+                                        }}
+                                        onDragEnd={handleSort}
+                                        onDragOver={(e) => e.preventDefault()}
+                                    >
+                                        {/* Drag Handle */}
+                                        <div className={`mt-1.5 text-slate-600 cursor-grab ${editingSubtaskId ? 'opacity-20 cursor-not-allowed' : 'hover:text-slate-400'}`}>
+                                            <GripVertical size={14} />
+                                        </div>
+
+                                        {/* Checkbox */}
                                         <button 
                                             type="button" 
                                             onClick={() => toggleSubtask(sub.id)}
-                                            className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${sub.completed ? 'bg-green-500 border-green-500' : 'border-slate-500 hover:border-primary'}`}
+                                            className={`mt-1 w-4 h-4 rounded border flex items-center justify-center transition-colors ${sub.completed ? 'bg-green-500 border-green-500' : 'border-slate-500 hover:border-primary'}`}
                                         >
                                             {sub.completed && <CheckSquare size={10} className="text-white" />}
                                         </button>
-                                        <span className={`text-sm flex-1 ${sub.completed ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                                            {sub.title}
-                                        </span>
-                                        <button type="button" onClick={() => deleteSubtask(sub.id)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <MinusCircle size={14} />
-                                        </button>
+                                        
+                                        {/* Content Area */}
+                                        <div className="flex-1 flex flex-col gap-1">
+                                            {editingSubtaskId === sub.id ? (
+                                                <>
+                                                    <input 
+                                                        type="text"
+                                                        autoFocus
+                                                        value={sub.title}
+                                                        onChange={(e) => updateSubtaskField(sub.id, 'title', e.target.value)}
+                                                        className="bg-dark-800 border-b border-primary outline-none text-sm w-full text-white pb-1"
+                                                        onKeyDown={(e) => e.key === 'Enter' && setEditingSubtaskId(null)}
+                                                    />
+                                                    <input 
+                                                        type="text"
+                                                        value={sub.description || ''}
+                                                        onChange={(e) => updateSubtaskField(sub.id, 'description', e.target.value)}
+                                                        className="bg-dark-800 border-b border-dark-600 focus:border-primary outline-none text-xs text-slate-300 w-full pb-1"
+                                                        placeholder="Descripción opcional..."
+                                                        onKeyDown={(e) => e.key === 'Enter' && setEditingSubtaskId(null)}
+                                                    />
+                                                </>
+                                            ) : (
+                                                <div onClick={() => !sub.completed && setEditingSubtaskId(sub.id)} className={`cursor-text ${sub.completed ? 'opacity-50' : ''}`}>
+                                                    <div className={`text-sm ${sub.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                                                        {sub.title}
+                                                    </div>
+                                                    {sub.description && (
+                                                        <div className="text-xs text-slate-500 mt-0.5">{sub.description}</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-0.5">
+                                            {editingSubtaskId === sub.id ? (
+                                                <button type="button" onClick={() => setEditingSubtaskId(null)} className="text-green-400 hover:bg-green-500/10 p-1 rounded">
+                                                    <Check size={14} />
+                                                </button>
+                                            ) : (
+                                                <button type="button" onClick={() => setEditingSubtaskId(sub.id)} className="text-slate-500 hover:text-primary p-1 rounded">
+                                                    <Edit3 size={14} />
+                                                </button>
+                                            )}
+                                            <button type="button" onClick={() => deleteSubtask(sub.id)} className="text-slate-500 hover:text-red-400 p-1 rounded">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                              </div>
@@ -348,7 +444,7 @@ const PlannerModule: React.FC = () => {
                              <div className="flex gap-2">
                                 <input 
                                     className="flex-1 bg-dark-800 border border-dark-600 rounded p-1.5 text-xs text-white focus:border-primary outline-none" 
-                                    placeholder="Agregar paso (Enter)..." 
+                                    placeholder="Agregar nueva tarea (Enter)..." 
                                     value={newSubtaskTitle}
                                     onChange={e => setNewSubtaskTitle(e.target.value)}
                                     onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); handleAddSubtask(); } }}
