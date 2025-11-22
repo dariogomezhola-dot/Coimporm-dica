@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Campaign, Asset, PitchData } from '../types';
-import { Edit2, FileText, Image as ImageIcon, Save, ArrowLeft, Plus, Trash2, Paperclip, Loader2, UploadCloud, CheckCircle, AlertCircle, X, Eye, Download, Globe, Terminal, ShieldAlert } from 'lucide-react';
+import { Edit2, FileText, Image as ImageIcon, Save, ArrowLeft, Plus, Trash2, Paperclip, Loader2, UploadCloud, CheckCircle, AlertCircle, X, Eye, Download, Globe, ShieldAlert } from 'lucide-react';
 import { db, storage } from '../firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -11,7 +11,6 @@ const CampaignModule: React.FC = () => {
   // --- STATES ---
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [logs, setLogs] = useState<string[]>([]); // Debug logs visible to user
   const [permissionError, setPermissionError] = useState(false);
   
   // Modes: LIST | EDIT | VIEW
@@ -29,21 +28,13 @@ const CampaignModule: React.FC = () => {
   const activeUploadPitchRef = useRef<string | null>(null); 
 
   // --- HELPERS ---
-  const addLog = (msg: string) => {
-      const time = new Date().toLocaleTimeString();
-      setLogs(prev => [`[${time}] ${msg}`, ...prev]);
-      console.log(`[System] ${msg}`);
-  };
-
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
       setToast({ message, type });
-      addLog(`${type.toUpperCase()}: ${message}`);
       setTimeout(() => setToast(null), 4000); 
   };
 
   // --- FIREBASE SYNC ---
   useEffect(() => {
-    addLog("Iniciando conexión a Firestore...");
     const q = query(collection(db, "campaigns"), orderBy("lastUpdated", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -54,15 +45,11 @@ const CampaignModule: React.FC = () => {
       setCampaigns(campaignsData);
       setIsLoading(false);
       setPermissionError(false);
-      addLog(`Datos sincronizados: ${campaignsData.length} campañas encontradas.`);
     }, (error) => {
         console.error("Error fetching campaigns:", error);
         setIsLoading(false);
         if (error.code === 'permission-denied') {
             setPermissionError(true);
-            addLog("BLOQUEO: Permisos insuficientes. Revisa las reglas de Firestore Console.");
-        } else {
-            addLog(`ERROR CRÍTICO: ${error.message}`);
         }
     });
     return () => unsubscribe();
@@ -71,17 +58,16 @@ const CampaignModule: React.FC = () => {
   // --- ACTIONS ---
 
   const handleCreateNew = () => {
-      addLog("Iniciando creación de campaña...");
       const newCampaignData = {
           name: 'Nueva Campaña',
           status: 'Draft' as const,
           lastUpdated: new Date().toISOString().split('T')[0],
           pitches: {
-              A: { text: '', assets: [] },
-              B: { text: '', assets: [] },
-              C: { text: '', assets: [] },
-              D: { text: '', assets: [] },
-              E: { text: '', assets: [] },
+              A: { text: '', assets: [], observations: '' },
+              B: { text: '', assets: [], observations: '' },
+              C: { text: '', assets: [], observations: '' },
+              D: { text: '', assets: [], observations: '' },
+              E: { text: '', assets: [], observations: '' },
           }
       };
       const tempCampaign = { ...newCampaignData, id: 'new' } as Campaign;
@@ -95,7 +81,6 @@ const CampaignModule: React.FC = () => {
   };
 
   const handleEdit = (campaign: Campaign) => {
-    addLog(`Editando campaña: ${campaign.name}`);
     setActiveCampaign(campaign);
     setFormState({ 
         name: campaign.name, 
@@ -106,7 +91,6 @@ const CampaignModule: React.FC = () => {
   };
 
   const handleView = (campaign: Campaign) => {
-      addLog(`Visualizando campaña: ${campaign.name}`);
       setActiveCampaign(campaign);
       setViewMode('VIEW');
   };
@@ -120,7 +104,6 @@ const CampaignModule: React.FC = () => {
   const handleSave = async () => {
     if(activeCampaign && formState) {
         setIsSaving(true);
-        addLog("Intentando guardar en Firestore...");
         
         const updatedData = {
             name: formState.name,
@@ -147,7 +130,6 @@ const CampaignModule: React.FC = () => {
             } else {
                 showToast(`Error al guardar: ${error.message}`, "error");
             }
-            addLog(`FALLO GUARDADO: ${error.code} - ${error.message}`);
         } finally {
             setIsSaving(false);
         }
@@ -161,30 +143,61 @@ const CampaignModule: React.FC = () => {
               showToast("Campaña eliminada");
           } catch (error: any) {
               showToast("Error al eliminar", "error");
-              addLog(`Error delete: ${error.message}`);
           }
       }
+  };
+
+  const updatePitchObservations = (key: string, obs: string) => {
+      if (!formState) return;
+      setFormState(prev => prev ? ({
+          ...prev,
+          pitches: {
+              ...prev.pitches,
+              [key]: {
+                  ...prev.pitches[key],
+                  observations: obs
+              }
+          }
+      }) : null);
+  };
+
+  const updateAssetDescription = (pitchKey: string, assetId: string, description: string) => {
+      if (!formState) return;
+      setFormState(prev => {
+          if (!prev) return null;
+          return {
+              ...prev,
+              pitches: {
+                  ...prev.pitches,
+                  [pitchKey]: {
+                      ...prev.pitches[pitchKey],
+                      assets: prev.pitches[pitchKey].assets.map(a => 
+                          a.id === assetId ? { ...a, description } : a
+                      )
+                  }
+              }
+          }
+      });
   };
 
   // --- FILE UPLOAD LOGIC ---
 
   const triggerFileUpload = (pitchKey: string) => {
-      addLog(`Abriendo selector de archivos para Pitch ${pitchKey}...`);
       activeUploadPitchRef.current = pitchKey;
-      
       if (fileInputRef.current) {
-          fileInputRef.current.value = ''; // Reset
+          fileInputRef.current.value = ''; // Reset input
           fileInputRef.current.click();
-      } else {
-          addLog("ERROR: Referencia de input no encontrada.");
       }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       
-      if (!file) {
-          addLog("Selección de archivo cancelada por el usuario.");
+      if (!file) return;
+
+      // Limit file size to 10MB to prevent browser hanging on large uploads
+      if (file.size > 10 * 1024 * 1024) {
+          showToast("El archivo es demasiado grande (Máx 10MB)", "error");
           return;
       }
 
@@ -193,31 +206,24 @@ const CampaignModule: React.FC = () => {
 
       setIsUploading(true);
       showToast(`Subiendo ${file.name}...`, "success");
-      addLog(`Iniciando subida a Storage: ${file.name} (${file.size} bytes)`);
       
       try {
-          // 1. Upload to Firebase Storage
           const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
           const storageRef = ref(storage, `assets/${fileName}`);
           
-          addLog(`Destino: assets/${fileName}`);
           const snapshot = await uploadBytes(storageRef, file);
-          addLog("Subida completada. Obteniendo URL...");
-          
           const url = await getDownloadURL(snapshot.ref);
-          addLog(`URL obtenida: ${url.substring(0, 30)}...`);
 
-          // 2. Create Asset Object
           const newAsset: Asset = {
               id: `a${Date.now()}`,
               name: file.name,
+              description: '', // Init description
               type: 'FILE',
               category: 'Campaign',
               size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
               url: url
           };
 
-          // 3. Update Local Form State
           setFormState(prev => {
               if(!prev) return null;
               return {
@@ -235,13 +241,7 @@ const CampaignModule: React.FC = () => {
 
       } catch (error: any) {
           console.error("Upload error:", error);
-          if (error.code === 'storage/unauthorized') {
-             showToast("Error Permisos Storage: Revisa reglas en Firebase Console", "error");
-             setPermissionError(true);
-          } else {
-             showToast(`Error subida: ${error.message}`, "error");
-          }
-          addLog(`ERROR SUBIDA: ${error.message}`);
+          showToast(`Error subida: ${error.message}`, "error");
       } finally {
           setIsUploading(false);
           activeUploadPitchRef.current = null;
@@ -250,7 +250,6 @@ const CampaignModule: React.FC = () => {
 
   const removeAssetFromPitch = (pitchKey: string, assetId: string) => {
       if (!formState) return;
-      addLog(`Removiendo asset ${assetId} localmente`);
       setFormState({
           ...formState,
           pitches: {
@@ -299,7 +298,6 @@ const CampaignModule: React.FC = () => {
   return (
     <div className="h-full relative bg-dark-900 flex flex-col">
         
-        {/* --- DEBUG & UTILS --- */}
         <input 
             type="file" 
             ref={fileInputRef} 
@@ -308,7 +306,6 @@ const CampaignModule: React.FC = () => {
         />
         <ToastPortal />
 
-        {/* --- PERMISSION ERROR BANNER --- */}
         {permissionError && (
             <div className="bg-red-500 text-white p-3 text-center text-sm font-bold flex items-center justify-center gap-2 animate-fadeIn shadow-lg z-50">
                 <ShieldAlert size={20} />
@@ -452,7 +449,7 @@ const CampaignModule: React.FC = () => {
                                         />
                                         <div>
                                             <div className="flex justify-between items-center mb-2">
-                                                <span className="text-xs text-slate-500 uppercase font-bold">Archivos</span>
+                                                <span className="text-xs text-slate-500 uppercase font-bold">Archivos & Observaciones</span>
                                                 <button 
                                                     type="button"
                                                     onClick={() => triggerFileUpload(pitchKey)}
@@ -462,15 +459,35 @@ const CampaignModule: React.FC = () => {
                                                     {isUploading && activeUploadPitchRef.current === pitchKey ? <Loader2 className="animate-spin" size={12} /> : <UploadCloud size={12} />} Subir
                                                 </button>
                                             </div>
+
+                                            {/* Technical Observations Area */}
+                                            <div className="mb-3">
+                                                <textarea 
+                                                    placeholder="Observaciones técnicas de los archivos (ej: 'Se necesita video en formato 9:16')..." 
+                                                    value={formState.pitches[pitchKey].observations || ''}
+                                                    onChange={(e) => updatePitchObservations(pitchKey, e.target.value)}
+                                                    className="w-full h-16 bg-dark-900 text-xs text-slate-300 p-2 rounded border border-dark-600 focus:border-primary outline-none resize-none mb-2"
+                                                />
+                                            </div>
+
                                             <div className="space-y-2">
                                                 {formState.pitches[pitchKey].assets.map(asset => (
-                                                    <div key={asset.id} className="flex items-center gap-2 bg-dark-800 p-2 rounded border border-dark-700">
-                                                        <div className="w-6 h-6 bg-dark-700 rounded flex items-center justify-center">{getFileIcon(asset.name)}</div>
-                                                        <span className="text-xs text-slate-300 truncate flex-1">{asset.name}</span>
-                                                        <button onClick={() => removeAssetFromPitch(pitchKey, asset.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>
+                                                    <div key={asset.id} className="flex flex-col bg-dark-800 p-2 rounded border border-dark-700">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 bg-dark-700 rounded flex items-center justify-center">{getFileIcon(asset.name)}</div>
+                                                            <span className="text-xs text-slate-300 truncate flex-1 font-medium">{asset.name}</span>
+                                                            <button onClick={() => removeAssetFromPitch(pitchKey, asset.id)} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button>
+                                                        </div>
+                                                        <input 
+                                                          type="text" 
+                                                          placeholder="Añadir descripción del archivo..." 
+                                                          value={asset.description || ''}
+                                                          onChange={(e) => updateAssetDescription(pitchKey, asset.id, e.target.value)}
+                                                          className="mt-2 w-full bg-dark-900 text-[10px] text-slate-400 p-1.5 rounded border border-dark-700 focus:border-primary outline-none"
+                                                        />
                                                     </div>
                                                 ))}
-                                                {formState.pitches[pitchKey].assets.length === 0 && <div className="text-xs text-slate-600 italic text-center py-2">Sin archivos</div>}
+                                                {formState.pitches[pitchKey].assets.length === 0 && <div className="text-xs text-slate-600 italic text-center py-2">Sin archivos adjuntos.</div>}
                                             </div>
                                         </div>
                                     </div>
@@ -516,13 +533,24 @@ const CampaignModule: React.FC = () => {
                                         <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed bg-dark-900 p-3 rounded border border-dark-800 mb-4">
                                             {pitch.text || <span className="italic text-slate-600">Sin guión definido.</span>}
                                         </p>
+
+                                        {pitch.observations && (
+                                            <div className="bg-yellow-500/5 border border-yellow-500/20 p-2 rounded mb-3">
+                                                <p className="text-xs text-yellow-500 font-bold uppercase mb-1">Observaciones Técnicas:</p>
+                                                <p className="text-xs text-slate-400">{pitch.observations}</p>
+                                            </div>
+                                        )}
+
                                         {pitch.assets.length > 0 && (
-                                            <div className="flex flex-wrap gap-3">
+                                            <div className="flex flex-col gap-2">
                                                 {pitch.assets.map(asset => (
-                                                    <a key={asset.id} href={asset.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3 py-2 rounded text-xs text-slate-300 transition-colors group">
-                                                        {getFileIcon(asset.name)}
-                                                        <span className="group-hover:text-white">{asset.name}</span>
-                                                        <Download size={12} className="ml-1 opacity-50" />
+                                                    <a key={asset.id} href={asset.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-dark-800 hover:bg-dark-700 border border-dark-700 px-3 py-2 rounded text-xs text-slate-300 transition-colors group">
+                                                        <div className="shrink-0">{getFileIcon(asset.name)}</div>
+                                                        <div className="flex-1">
+                                                            <span className="group-hover:text-white font-medium block">{asset.name}</span>
+                                                            {asset.description && <span className="text-[10px] text-slate-500 block">{asset.description}</span>}
+                                                        </div>
+                                                        <Download size={12} className="opacity-50" />
                                                     </a>
                                                 ))}
                                             </div>
@@ -534,17 +562,6 @@ const CampaignModule: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>
-
-        {/* --- DEBUG CONSOLE (BOTTOM) --- */}
-        <div className="shrink-0 bg-black/50 border-t border-dark-700 p-2 max-h-32 overflow-y-auto text-[10px] font-mono text-slate-500">
-            <div className="flex items-center gap-2 mb-1 text-slate-400 font-bold uppercase"><Terminal size={10}/> Consola de Sistema</div>
-            {logs.length === 0 && <div className="opacity-50">Esperando eventos...</div>}
-            {logs.map((log, i) => (
-                <div key={i} className={`${log.includes('ERROR') || log.includes('FALLO') || log.includes('BLOQUEO') ? 'text-red-400' : log.includes('success') ? 'text-green-400' : ''}`}>
-                    {log}
-                </div>
-            ))}
         </div>
     </div>
   );

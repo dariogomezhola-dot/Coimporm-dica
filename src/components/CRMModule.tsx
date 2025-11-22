@@ -1,45 +1,116 @@
+
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import { Lead } from '../types';
-import { Plus, Phone, MessageCircle, MoreHorizontal, Trash2, User, ArrowRight, DollarSign, AlertCircle, CheckCircle2, Clock, RefreshCw } from 'lucide-react';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { Lead, Campaign, PitchData } from '../types';
+import { Plus, Phone, MessageCircle, Trash2, User, ArrowRight, AlertCircle, CheckCircle2, Clock, RefreshCw, LayoutDashboard, GripVertical, BookOpen, Edit2 } from 'lucide-react';
 
 const CRMModule: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]); // To populate dropdown
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   
-  // New Lead Form State
-  const [newLead, setNewLead] = useState({ name: '', phone: '', interest: '', notes: '' });
+  // New/Edit Lead Form State
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<{name: string, phone: string, interest: string, notes: string, campaignId: string}>({ 
+      name: '', phone: '', interest: '', notes: '', campaignId: '' 
+  });
 
   // Fetch Leads
   useEffect(() => {
-    const q = query(collection(db, "leads"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "leads"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const leadsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Lead[];
+      
+      leadsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setLeads(leadsData);
       setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching leads:", error);
+        setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  // Fetch Campaigns for assignment
+  useEffect(() => {
+      const q = query(collection(db, "campaigns"));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+          const cData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()})) as Campaign[];
+          setCampaigns(cData);
+      });
+      return () => unsubscribe();
+  }, []);
+
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+      e.dataTransfer.setData("leadId", id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, status: Lead['status']) => {
+      const leadId = e.dataTransfer.getData("leadId");
+      if (leadId) {
+          const lead = leads.find(l => l.id === leadId);
+          if (lead && lead.status !== status) {
+              const leadRef = doc(db, "leads", leadId);
+              updateDoc(leadRef, {
+                  status: status,
+                  lastAction: `Movido a ${status}`
+              });
+          }
+      }
+  };
+
   // CRUD Actions
-  const handleAddLead = async (e: React.FormEvent) => {
+  const openModalForNew = () => {
+      setEditingLeadId(null);
+      setFormData({ name: '', phone: '', interest: '', notes: '', campaignId: '' });
+      setShowAddModal(true);
+  };
+
+  const openModalForEdit = (lead: Lead) => {
+      setEditingLeadId(lead.id);
+      setFormData({
+          name: lead.name,
+          phone: lead.phone,
+          interest: lead.interest,
+          notes: lead.notes,
+          campaignId: lead.campaignId || ''
+      });
+      setShowAddModal(true);
+  };
+
+  const handleSaveLead = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "leads"), {
-        ...newLead,
-        status: 'NEW',
-        createdAt: new Date().toISOString(),
-        lastAction: 'Creado manualmente'
-      });
+      if (editingLeadId) {
+          // UPDATE EXISTING
+          const leadRef = doc(db, "leads", editingLeadId);
+          await updateDoc(leadRef, {
+              ...formData,
+              lastAction: 'Editado manualmente'
+          });
+      } else {
+          // CREATE NEW
+          await addDoc(collection(db, "leads"), {
+            ...formData,
+            status: 'NEW',
+            createdAt: new Date().toISOString(),
+            lastAction: 'Creado manualmente'
+          });
+      }
       setShowAddModal(false);
-      setNewLead({ name: '', phone: '', interest: '', notes: '' });
     } catch (error) {
-      console.error("Error adding lead:", error);
+      console.error("Error saving lead:", error);
+      alert("Error al guardar. Revisa los permisos de Firebase.");
     }
   };
 
@@ -73,12 +144,19 @@ const CRMModule: React.FC = () => {
     });
   };
 
+  // Helper to find selected campaign details
+  const selectedCampaign = campaigns.find(c => c.id === formData.campaignId);
+
   // Kanban Column Component
   const KanbanColumn = ({ title, status, color, icon: Icon }: { title: string, status: Lead['status'], color: string, icon: any }) => {
     const columnLeads = leads.filter(l => l.status === status);
     
     return (
-      <div className="flex flex-col h-full min-w-[280px] bg-dark-800/50 rounded-xl border border-dark-700/50 flex-1">
+      <div 
+        className="flex flex-col h-full min-w-[280px] bg-dark-800/50 rounded-xl border border-dark-700/50 flex-1 transition-colors"
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, status)}
+      >
         {/* Header */}
         <div className={`p-4 border-b border-dark-700 flex items-center justify-between ${color} bg-opacity-10`}>
            <div className="flex items-center gap-2">
@@ -93,13 +171,25 @@ const CRMModule: React.FC = () => {
         {/* Cards Area */}
         <div className="flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar">
            {columnLeads.map(lead => (
-             <div key={lead.id} className="bg-dark-900 border border-dark-700 p-4 rounded-lg shadow-sm hover:border-primary/50 group transition-all relative">
-                
+             <div 
+                key={lead.id} 
+                draggable 
+                onDragStart={(e) => handleDragStart(e, lead.id)}
+                className="bg-dark-900 border border-dark-700 p-4 rounded-lg shadow-sm hover:border-primary/50 group transition-all relative cursor-grab active:cursor-grabbing"
+             >
                 <div className="flex justify-between items-start mb-2">
-                   <h4 className="font-bold text-white text-sm">{lead.name}</h4>
-                   <button onClick={() => handleDeleteLead(lead.id)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Trash2 size={14} />
-                   </button>
+                   <div className="flex items-center gap-2">
+                      <GripVertical size={12} className="text-slate-600" />
+                      <h4 className="font-bold text-white text-sm">{lead.name}</h4>
+                   </div>
+                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openModalForEdit(lead)} className="text-slate-600 hover:text-primary p-1">
+                          <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDeleteLead(lead.id)} className="text-slate-600 hover:text-red-400 p-1">
+                          <Trash2 size={14} />
+                      </button>
+                   </div>
                 </div>
                 
                 <div className="text-xs text-slate-400 mb-3 space-y-1">
@@ -109,7 +199,11 @@ const CRMModule: React.FC = () => {
                     <div className="flex items-center gap-2 text-primary">
                         <AlertCircle size={12} /> {lead.interest}
                     </div>
-                    {lead.notes && <div className="italic opacity-70 mt-1 line-clamp-2">"{lead.notes}"</div>}
+                    {lead.campaignId && (
+                        <div className="bg-dark-800 text-slate-500 px-1.5 py-0.5 rounded text-[10px] inline-block border border-dark-700 mt-1">
+                            Camp: {campaigns.find(c => c.id === lead.campaignId)?.name || 'Desconocida'}
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions Footer */}
@@ -129,7 +223,7 @@ const CRMModule: React.FC = () => {
            ))}
            {columnLeads.length === 0 && (
               <div className="h-24 border-2 border-dashed border-dark-700 rounded-lg flex items-center justify-center text-slate-600 text-xs">
-                 Vacío
+                 Arrastra leads aquí
               </div>
            )}
         </div>
@@ -156,7 +250,7 @@ const CRMModule: React.FC = () => {
                 </button>
             )}
             <button 
-                onClick={() => setShowAddModal(true)}
+                onClick={openModalForNew}
                 className="bg-primary hover:bg-cyan-400 text-dark-900 font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-primary/10 transition-all"
             >
                 <Plus size={18} /> Nuevo Lead
@@ -174,41 +268,92 @@ const CRMModule: React.FC = () => {
          </div>
       </div>
 
-      {/* Add Lead Modal */}
+      {/* Add/Edit Lead Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-dark-800 border border-dark-700 p-6 rounded-2xl w-full max-w-md shadow-2xl animate-fadeIn">
+            <div className="bg-dark-800 border border-dark-700 p-6 rounded-2xl w-full max-w-2xl shadow-2xl animate-fadeIn max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                    <User size={20} className="text-primary"/> Registrar Cliente
+                    <User size={20} className="text-primary"/> {editingLeadId ? 'Editar Cliente' : 'Registrar Cliente'}
                 </h2>
-                <form onSubmit={handleAddLead} className="space-y-4">
-                    <div>
-                        <label className="text-xs uppercase text-slate-500 font-bold">Nombre Cliente</label>
-                        <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
-                            value={newLead.name} onChange={e => setNewLead({...newLead, name: e.target.value})} placeholder="Ej: Juan Pérez" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                    {/* Left: Form */}
+                    <form onSubmit={handleSaveLead} className="space-y-4">
+                        <div>
+                            <label className="text-xs uppercase text-slate-500 font-bold">Nombre Cliente</label>
+                            <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
+                                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej: Juan Pérez" />
+                        </div>
                         <div>
                             <label className="text-xs uppercase text-slate-500 font-bold">Teléfono</label>
                             <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
-                                value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} placeholder="+57..." />
+                                value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+57..." />
                         </div>
                         <div>
                             <label className="text-xs uppercase text-slate-500 font-bold">Interés</label>
                             <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
-                                value={newLead.interest} onChange={e => setNewLead({...newLead, interest: e.target.value})} placeholder="Producto..." />
+                                value={formData.interest} onChange={e => setFormData({...formData, interest: e.target.value})} placeholder="Producto..." />
+                        </div>
+                        
+                        {/* Campaign Select */}
+                        <div>
+                            <label className="text-xs uppercase text-slate-500 font-bold">Asignar Campaña</label>
+                            <select 
+                                className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none"
+                                value={formData.campaignId}
+                                onChange={e => setFormData({...formData, campaignId: e.target.value})}
+                            >
+                                <option value="">-- Sin Campaña --</option>
+                                {campaigns.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-xs uppercase text-slate-500 font-bold">Notas Iniciales</label>
+                            <textarea className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none h-20 resize-none" 
+                                value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Detalles del primer contacto..." />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-dark-700 hover:bg-dark-600 text-white py-2 rounded-lg">Cancelar</button>
+                            <button type="submit" className="flex-1 bg-primary hover:bg-cyan-400 text-dark-900 font-bold py-2 rounded-lg">{editingLeadId ? 'Actualizar' : 'Guardar'}</button>
+                        </div>
+                    </form>
+
+                    {/* Right: Mini-Library Preview */}
+                    <div className="bg-dark-900 rounded-lg p-4 border border-dark-700 h-full flex flex-col">
+                        <div className="flex items-center gap-2 mb-3 text-slate-400">
+                             <BookOpen size={16} />
+                             <span className="text-xs font-bold uppercase">Guiones de Campaña</span>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+                            {selectedCampaign ? (
+                                <>
+                                    <h4 className="text-accent text-sm font-bold mb-2">{selectedCampaign.name}</h4>
+                                    {['A', 'B', 'C', 'D', 'E'].map(pitchKey => {
+                                        const pitch = selectedCampaign.pitches[pitchKey] as PitchData | undefined;
+                                        if(!pitch?.text) return null;
+                                        return (
+                                            <div key={pitchKey} className="bg-dark-800 p-2 rounded border border-dark-700">
+                                                <span className="text-[10px] bg-primary text-dark-900 px-1 rounded font-bold mr-2">{pitchKey}</span>
+                                                <p className="text-xs text-slate-300 mt-1">{pitch.text}</p>
+                                            </div>
+                                        )
+                                    })}
+                                    {Object.values(selectedCampaign.pitches).every((p: any) => !p.text) && (
+                                        <div className="text-center text-slate-600 text-xs italic mt-10">Esta campaña no tiene guiones definidos.</div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-600 text-xs text-center px-4">
+                                    Selecciona una campaña a la izquierda para previsualizar sus guiones y mensajes clave.
+                                </div>
+                            )}
                         </div>
                     </div>
-                    <div>
-                        <label className="text-xs uppercase text-slate-500 font-bold">Notas Iniciales</label>
-                        <textarea className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none h-20 resize-none" 
-                            value={newLead.notes} onChange={e => setNewLead({...newLead, notes: e.target.value})} placeholder="Detalles del primer contacto..." />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-dark-700 hover:bg-dark-600 text-white py-2 rounded-lg">Cancelar</button>
-                        <button type="submit" className="flex-1 bg-primary hover:bg-cyan-400 text-dark-900 font-bold py-2 rounded-lg">Guardar Lead</button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
       )}

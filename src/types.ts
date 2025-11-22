@@ -1,3 +1,4 @@
+
 export enum ModuleType {
   CRM = 'CRM',
   WIKI = 'WIKI',
@@ -16,6 +17,7 @@ export interface Lead {
   createdAt: string;
   assignedTo?: string;
   lastAction?: string;
+  campaignId?: string; // Link to a specific campaign
 }
 
 export interface ChatMessage {
@@ -60,6 +62,7 @@ export interface Slide {
 export interface Asset {
   id: string;
   name: string;
+  description?: string; // New field for file description
   type: 'PDF' | 'JPG' | 'PNG' | 'DOC' | 'FILE';
   category: 'Logo' | 'Identity' | 'Legal' | 'Campaign';
   size: string;
@@ -69,6 +72,7 @@ export interface Asset {
 export interface PitchData {
   text: string;
   assets: Asset[];
+  observations?: string; // General technical observations for the pitch assets
 }
 
 export interface Campaign {
