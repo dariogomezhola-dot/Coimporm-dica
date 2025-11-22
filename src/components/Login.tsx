@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
-import { Lock, LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Lock, LogIn, AlertCircle } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -33,30 +33,6 @@ const Login: React.FC = () => {
     setLoading(false);
   };
 
-  const createSuperUser = async () => {
-      setLoading(true);
-      const superEmail = "admin@coimpormedica.com";
-      const superPass = "123456";
-
-      try {
-          await createUserWithEmailAndPassword(auth, superEmail, superPass);
-          setEmail(superEmail);
-          setPassword(superPass);
-          setError("¡Super Usuario Creado! Ahora haz clic en Iniciar Sesión.");
-      } catch (err: any) {
-          if (err.code === 'auth/email-already-in-use') {
-              setEmail(superEmail);
-              setPassword(superPass);
-              setError("El usuario ya existe. Credenciales cargadas automáticamente.");
-          } else if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
-             setError('ERROR: Debes habilitar el proveedor "Email/Password" en Firebase Console -> Authentication.');
-          } else {
-              setError("Error al crear: " + err.message);
-          }
-      }
-      setLoading(false);
-  };
-
   return (
     <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decoration */}
@@ -76,11 +52,7 @@ const Login: React.FC = () => {
         <p className="text-slate-400 text-center mb-8 text-sm">Sistema de Gestión Comercial Integral</p>
 
         {error && (
-          <div className={`p-3 rounded-lg mb-6 text-sm flex items-center gap-2 animate-fadeIn ${
-              error.includes('Creado') || error.includes('cargadas') 
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}>
+          <div className="p-3 rounded-lg mb-6 text-sm flex items-center gap-2 animate-fadeIn bg-red-500/10 border border-red-500/20 text-red-400">
             <AlertCircle size={16} className="shrink-0" />
             {error}
           </div>
@@ -120,13 +92,7 @@ const Login: React.FC = () => {
         </form>
 
         <div className="mt-8 pt-6 border-t border-dark-700 text-center">
-            <p className="text-xs text-slate-500 mb-3">¿Configuración inicial o problemas de acceso?</p>
-            <button 
-                onClick={createSuperUser}
-                className="text-xs bg-dark-700 hover:bg-dark-600 text-slate-300 hover:text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 mx-auto border border-dark-600"
-            >
-                <ShieldCheck size={14} /> Generar Credenciales Admin
-            </button>
+            <p className="text-xs text-slate-500">Acceso restringido únicamente a personal autorizado.</p>
         </div>
       </div>
     </div>
