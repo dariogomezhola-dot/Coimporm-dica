@@ -1,4 +1,3 @@
-
 export enum ModuleType {
   CRM = 'CRM',
   WIKI = 'WIKI',
@@ -22,7 +21,7 @@ export interface Lead {
 export interface ChatMessage {
   id: string;
   text: string;
-  isSender: boolean; // true = outgoing (green), false = incoming (gray)
+  isSender: boolean;
   timestamp?: string;
   type?: 'text' | 'image' | 'audio' | 'file';
   metadata?: {
@@ -39,7 +38,7 @@ export interface SlideContentData {
     cards?: {
         title: string;
         titleColor?: string;
-        content: string | string[]; // string for paragraph, array for list
+        content: string | string[];
         listOrdered?: boolean;
         type?: 'list' | 'text' | 'mixed';
     }[];
@@ -78,12 +77,12 @@ export interface Campaign {
   status: 'Active' | 'Draft' | 'Paused';
   lastUpdated: string;
   pitches: {
-    [key: string]: PitchData; // Keys: A, B, C, D, E
+    [key: string]: PitchData;
   };
 }
 
 export interface Metric {
   name: string;
   value: number;
-  change: number; // percentage
+  change: number;
 }

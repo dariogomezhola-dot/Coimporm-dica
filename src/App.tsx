@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { auth } from './firebase';
 import Login from './components/Login';
 
-// Components
+// Strict relative paths to fix module resolution errors
 import CRMModule from './components/CRMModule';
 import ManualModule from './components/ManualModule';
 import CampaignModule from './components/CampaignModule';

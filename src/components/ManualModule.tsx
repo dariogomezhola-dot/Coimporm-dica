@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { SLIDES } from '../constants';
-import { Send, ArrowRight, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, ArrowRight, FileText, Download, BookOpen } from 'lucide-react';
 import { SlideContentData } from '../types';
 
 const ManualModule: React.FC = () => {
@@ -110,7 +109,7 @@ const ManualModule: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8 p-6 lg:p-12 pt-4 overflow-hidden">
         
-        {/* Left: Text Content */}
+        {/* Left: Text Content - Updated to handle scroll better */}
         <div className="flex flex-col h-full overflow-hidden">
            <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
               <div key={currentSlideIndex} className="animate-slideUp">
@@ -129,7 +128,7 @@ const ManualModule: React.FC = () => {
            </div>
         </div>
 
-        {/* Right: Phone Simulator */}
+        {/* Right: Phone Simulator (Interactive Demo) */}
         <div className="hidden lg:flex items-center justify-center perspective-1000 h-full">
            <div className="w-[320px] h-[640px] bg-black rounded-[40px] border-[8px] border-dark-700 shadow-2xl overflow-hidden relative rotate-y-5 hover:transform-none transition-transform duration-500 ease-out group">
               

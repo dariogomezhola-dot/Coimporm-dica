@@ -1,4 +1,3 @@
-
 import { Slide, Campaign, Asset } from './types';
 
 export const SLIDES: Slide[] = [
@@ -33,6 +32,7 @@ export const SLIDES: Slide[] = [
       { id: '3', text: "Es para mi papá, viaja mucho.", isSender: false, timestamp: "10:06 AM" }
     ]
   },
+  // ... (Existing slides can remain as reference material for the Wiki)
   {
     id: 1,
     eyebrow: "Objetivos",
@@ -71,6 +71,7 @@ export const SLIDES: Slide[] = [
   },
 ];
 
+// Mock Campaigns used only for initial state if DB is empty
 export const CAMPAIGNS: Campaign[] = [];
 
 export const LIBRARY_ASSETS: Asset[] = [
