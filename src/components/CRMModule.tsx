@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Lead, Campaign, PitchData } from '../types';
-import { Plus, Phone, MessageCircle, Trash2, User, ArrowRight, AlertCircle, CheckCircle2, Clock, RefreshCw, LayoutDashboard, GripVertical, BookOpen, Edit2 } from 'lucide-react';
+import { Plus, Phone, MessageCircle, Trash2, User, ArrowRight, AlertCircle, CheckCircle2, Clock, RefreshCw, LayoutDashboard, GripVertical, BookOpen, Edit2, Thermometer, Target, Timer } from 'lucide-react';
 
 const CRMModule: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -13,8 +13,8 @@ const CRMModule: React.FC = () => {
   
   // New/Edit Lead Form State
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<{name: string, phone: string, interest: string, notes: string, campaignId: string}>({ 
-      name: '', phone: '', interest: '', notes: '', campaignId: '' 
+  const [formData, setFormData] = useState<Partial<Lead>>({ 
+      name: '', phone: '', interest: '', notes: '', campaignId: '', qualification: 'Suspect', temperature: 'Cold', responseTime: 0
   });
 
   // Fetch Leads
@@ -72,7 +72,7 @@ const CRMModule: React.FC = () => {
   // CRUD Actions
   const openModalForNew = () => {
       setEditingLeadId(null);
-      setFormData({ name: '', phone: '', interest: '', notes: '', campaignId: '' });
+      setFormData({ name: '', phone: '', interest: '', notes: '', campaignId: '', qualification: 'Suspect', temperature: 'Cold', responseTime: 0 });
       setShowAddModal(true);
   };
 
@@ -83,7 +83,10 @@ const CRMModule: React.FC = () => {
           phone: lead.phone,
           interest: lead.interest,
           notes: lead.notes,
-          campaignId: lead.campaignId || ''
+          campaignId: lead.campaignId || '',
+          qualification: lead.qualification || 'Suspect',
+          temperature: lead.temperature || 'Cold',
+          responseTime: lead.responseTime || 0
       });
       setShowAddModal(true);
   };
@@ -135,9 +138,9 @@ const CRMModule: React.FC = () => {
 
   const generateDummyData = async () => {
     const dummies = [
-        { name: "Carlos Ruiz", phone: "+57 300 123 4567", interest: "Micro CPAP", status: "NEW", notes: "Interesado por Facebook Ads" },
-        { name: "Dra. Ana Torres", phone: "+57 310 987 6543", interest: "Equipos Clínicos", status: "CONTACTED", notes: "Pidió ficha técnica" },
-        { name: "Hospital Central", phone: "+57 601 234 5678", interest: "Licitación 2024", status: "NEGOTIATION", notes: "Enviada cotización formal" },
+        { name: "Carlos Ruiz", phone: "+57 300 123 4567", interest: "Micro CPAP", status: "NEW", notes: "Interesado por Facebook Ads", qualification: "MQL", temperature: "Warm" },
+        { name: "Dra. Ana Torres", phone: "+57 310 987 6543", interest: "Equipos Clínicos", status: "CONTACTED", notes: "Pidió ficha técnica", qualification: "SQL", temperature: "Hot" },
+        { name: "Hospital Central", phone: "+57 601 234 5678", interest: "Licitación 2024", status: "NEGOTIATION", notes: "Enviada cotización formal", qualification: "Opportunity", temperature: "Hot" },
     ];
     dummies.forEach(async (d) => {
         await addDoc(collection(db, "leads"), { ...d, createdAt: new Date().toISOString(), lastAction: 'Importado' });
@@ -153,7 +156,7 @@ const CRMModule: React.FC = () => {
     
     return (
       <div 
-        className="flex flex-col h-full min-w-[280px] bg-dark-800/50 rounded-xl border border-dark-700/50 flex-1 transition-colors"
+        className="flex flex-col h-full min-w-[300px] bg-dark-800/50 rounded-xl border border-dark-700/50 flex-1 transition-colors"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, status)}
       >
@@ -203,6 +206,29 @@ const CRMModule: React.FC = () => {
                         <div className="bg-dark-800 text-slate-500 px-1.5 py-0.5 rounded text-[10px] inline-block border border-dark-700 mt-1">
                             Camp: {campaigns.find(c => c.id === lead.campaignId)?.name || 'Desconocida'}
                         </div>
+                    )}
+                </div>
+
+                {/* Metrics Row */}
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    {lead.qualification && (
+                        <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded border ${
+                            lead.qualification === 'MQL' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                            lead.qualification === 'SQL' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                            lead.qualification === 'Opportunity' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                            'bg-slate-800 text-slate-500 border-slate-700'
+                        }`}>
+                            {lead.qualification}
+                        </span>
+                    )}
+                    {lead.temperature && (
+                        <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded border flex items-center gap-1 ${
+                            lead.temperature === 'Hot' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                            lead.temperature === 'Warm' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                            'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                        }`}>
+                            <Thermometer size={8} /> {lead.temperature}
+                        </span>
                     )}
                 </div>
 
@@ -268,7 +294,7 @@ const CRMModule: React.FC = () => {
          </div>
       </div>
 
-      {/* Add/Edit Lead Modal */}
+      {/* Add Lead Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-dark-800 border border-dark-700 p-6 rounded-2xl w-full max-w-2xl shadow-2xl animate-fadeIn max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -284,15 +310,55 @@ const CRMModule: React.FC = () => {
                             <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
                                 value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej: Juan Pérez" />
                         </div>
-                        <div>
-                            <label className="text-xs uppercase text-slate-500 font-bold">Teléfono</label>
-                            <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
-                                value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+57..." />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs uppercase text-slate-500 font-bold">Teléfono</label>
+                                <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
+                                    value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+57..." />
+                            </div>
+                            <div>
+                                <label className="text-xs uppercase text-slate-500 font-bold">Interés</label>
+                                <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
+                                    value={formData.interest} onChange={e => setFormData({...formData, interest: e.target.value})} placeholder="Producto..." />
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-xs uppercase text-slate-500 font-bold">Interés</label>
-                            <input required className="w-full bg-dark-900 border border-dark-600 rounded p-2 text-white mt-1 focus:border-primary outline-none" 
-                                value={formData.interest} onChange={e => setFormData({...formData, interest: e.target.value})} placeholder="Producto..." />
+
+                        {/* --- NEW METRICS FIELDS --- */}
+                        <div className="grid grid-cols-3 gap-3 bg-dark-900/50 p-3 rounded border border-dark-700">
+                             <div>
+                                <label className="text-[10px] uppercase text-slate-500 font-bold mb-1 flex items-center gap-1"><Target size={10}/> Calificación</label>
+                                <select 
+                                    className="w-full bg-dark-800 border border-dark-600 rounded p-1.5 text-xs text-white outline-none focus:border-primary"
+                                    value={formData.qualification}
+                                    onChange={e => setFormData({...formData, qualification: e.target.value as any})}
+                                >
+                                    <option value="Suspect">Sospechoso</option>
+                                    <option value="MQL">MQL (Marketing)</option>
+                                    <option value="SQL">SQL (Ventas)</option>
+                                    <option value="Opportunity">Oportunidad</option>
+                                </select>
+                             </div>
+                             <div>
+                                <label className="text-[10px] uppercase text-slate-500 font-bold mb-1 flex items-center gap-1"><Thermometer size={10}/> Temperatura</label>
+                                <select 
+                                    className="w-full bg-dark-800 border border-dark-600 rounded p-1.5 text-xs text-white outline-none focus:border-primary"
+                                    value={formData.temperature}
+                                    onChange={e => setFormData({...formData, temperature: e.target.value as any})}
+                                >
+                                    <option value="Cold">Frío ❄️</option>
+                                    <option value="Warm">Tibio 🌤️</option>
+                                    <option value="Hot">Caliente 🔥</option>
+                                </select>
+                             </div>
+                             <div>
+                                <label className="text-[10px] uppercase text-slate-500 font-bold mb-1 flex items-center gap-1"><Timer size={10}/> T. Respuesta (min)</label>
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-dark-800 border border-dark-600 rounded p-1.5 text-xs text-white outline-none focus:border-primary"
+                                    value={formData.responseTime}
+                                    onChange={e => setFormData({...formData, responseTime: Number(e.target.value)})}
+                                />
+                             </div>
                         </div>
                         
                         {/* Campaign Select */}
@@ -337,7 +403,10 @@ const CRMModule: React.FC = () => {
                                         if(!pitch?.text) return null;
                                         return (
                                             <div key={pitchKey} className="bg-dark-800 p-2 rounded border border-dark-700">
-                                                <span className="text-[10px] bg-primary text-dark-900 px-1 rounded font-bold mr-2">{pitchKey}</span>
+                                                <div className="flex justify-between mb-1">
+                                                    <span className="text-[10px] bg-primary text-dark-900 px-1 rounded font-bold mr-2">{pitchKey}</span>
+                                                    <span className="text-[9px] text-slate-400 italic">{pitch.title}</span>
+                                                </div>
                                                 <p className="text-xs text-slate-300 mt-1">{pitch.text}</p>
                                             </div>
                                         )

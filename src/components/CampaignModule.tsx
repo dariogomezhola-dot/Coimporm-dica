@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Campaign, Asset, PitchData } from '../types';
-import { Edit2, FileText, Image as ImageIcon, Save, ArrowLeft, Plus, Trash2, Paperclip, Loader2, UploadCloud, CheckCircle, AlertCircle, X, Eye, Download, Globe, ShieldAlert } from 'lucide-react';
+import { Edit2, FileText, Image as ImageIcon, Save, ArrowLeft, Plus, Trash2, Paperclip, Loader2, UploadCloud, CheckCircle, AlertCircle, X, Eye, Download, Globe, ShieldAlert, PenLine } from 'lucide-react';
 import { db, storage } from '../firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -63,11 +63,11 @@ const CampaignModule: React.FC = () => {
           status: 'Draft' as const,
           lastUpdated: new Date().toISOString().split('T')[0],
           pitches: {
-              A: { text: '', assets: [], observations: '' },
-              B: { text: '', assets: [], observations: '' },
-              C: { text: '', assets: [], observations: '' },
-              D: { text: '', assets: [], observations: '' },
-              E: { text: '', assets: [], observations: '' },
+              A: { title: 'Educativo', text: '', assets: [], observations: '' },
+              B: { title: 'Diferenciales', text: '', assets: [], observations: '' },
+              C: { title: 'Confianza', text: '', assets: [], observations: '' },
+              D: { title: 'Casos de Uso', text: '', assets: [], observations: '' },
+              E: { title: 'Urgencia', text: '', assets: [], observations: '' },
           }
       };
       const tempCampaign = { ...newCampaignData, id: 'new' } as Campaign;
@@ -82,10 +82,19 @@ const CampaignModule: React.FC = () => {
 
   const handleEdit = (campaign: Campaign) => {
     setActiveCampaign(campaign);
+    
+    // Ensure titles exist for older campaigns
+    const pitches = JSON.parse(JSON.stringify(campaign.pitches));
+    const defaults: any = { A: 'Educativo', B: 'Diferenciales', C: 'Confianza', D: 'Casos de Uso', E: 'Urgencia' };
+    
+    Object.keys(pitches).forEach(key => {
+        if (!pitches[key].title) pitches[key].title = defaults[key] || `Pitch ${key}`;
+    });
+
     setFormState({ 
         name: campaign.name, 
         status: campaign.status,
-        pitches: JSON.parse(JSON.stringify(campaign.pitches)) 
+        pitches: pitches 
     });
     setViewMode('EDIT');
   };
@@ -156,6 +165,20 @@ const CampaignModule: React.FC = () => {
               [key]: {
                   ...prev.pitches[key],
                   observations: obs
+              }
+          }
+      }) : null);
+  };
+
+  const updatePitchTitle = (key: string, title: string) => {
+      if (!formState) return;
+      setFormState(prev => prev ? ({
+          ...prev,
+          pitches: {
+              ...prev.pitches,
+              [key]: {
+                  ...prev.pitches[key],
+                  title: title
               }
           }
       }) : null);
@@ -434,11 +457,21 @@ const CampaignModule: React.FC = () => {
                          <div className="space-y-8 max-w-4xl mx-auto pb-20">
                             {['A', 'B', 'C', 'D', 'E'].map((pitchKey) => (
                                 <div key={pitchKey} className="bg-dark-900/50 rounded-xl border border-dark-700 p-6">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="font-bold text-white flex items-center gap-2">
-                                            <span className="w-6 h-6 rounded-full bg-primary text-dark-900 flex items-center justify-center text-xs">{pitchKey}</span>
-                                            Pitch {pitchKey}
-                                        </h3>
+                                    <div className="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
+                                        <div className="flex items-center gap-3">
+                                            <span className="w-6 h-6 rounded-full bg-primary text-dark-900 flex items-center justify-center text-xs font-bold">{pitchKey}</span>
+                                            
+                                            {/* EDITABLE TITLE */}
+                                            <div className="flex items-center gap-2 group/edit">
+                                                <input 
+                                                    type="text"
+                                                    value={formState.pitches[pitchKey].title || `Pitch ${pitchKey}`}
+                                                    onChange={(e) => updatePitchTitle(pitchKey, e.target.value)}
+                                                    className="bg-transparent text-white font-bold border-b border-transparent hover:border-dark-600 focus:border-primary outline-none transition-all"
+                                                />
+                                                <PenLine size={12} className="text-slate-500 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="grid lg:grid-cols-2 gap-6">
                                         <textarea 
@@ -528,7 +561,7 @@ const CampaignModule: React.FC = () => {
                                     <div key={pitchKey} className="bg-dark-900/50 rounded-xl border border-dark-700 p-5">
                                         <h3 className="text-white font-bold mb-3 flex items-center gap-2">
                                             <span className="w-6 h-6 rounded-full bg-dark-700 border border-slate-600 flex items-center justify-center text-xs">{pitchKey}</span>
-                                            Pitch {pitchKey}
+                                            {pitch.title || `Pitch ${pitchKey}`}
                                         </h3>
                                         <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed bg-dark-900 p-3 rounded border border-dark-800 mb-4">
                                             {pitch.text || <span className="italic text-slate-600">Sin guión definido.</span>}

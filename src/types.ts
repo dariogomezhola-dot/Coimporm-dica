@@ -18,6 +18,11 @@ export interface Lead {
   assignedTo?: string;
   lastAction?: string;
   campaignId?: string; // Link to a specific campaign
+  
+  // New Metrics
+  qualification?: 'Suspect' | 'MQL' | 'SQL' | 'Opportunity';
+  temperature?: 'Hot' | 'Warm' | 'Cold'; 
+  responseTime?: number; // in minutes
 }
 
 export interface ChatMessage {
@@ -70,6 +75,7 @@ export interface Asset {
 }
 
 export interface PitchData {
+  title?: string; // Editable name of the pitch (e.g. "Intro Video" instead of just "Pitch A")
   text: string;
   assets: Asset[];
   observations?: string; // General technical observations for the pitch assets
