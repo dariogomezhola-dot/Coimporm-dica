@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ModuleType } from './types';
-import { BookOpen, Megaphone, Bookmark, BarChart2, Menu, LogOut, LayoutDashboard } from 'lucide-react';
+import { BookOpen, Megaphone, Bookmark, BarChart2, Menu, LogOut, LayoutDashboard, ClipboardList } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { auth } from './firebase';
 import Login from './components/Login';
@@ -12,6 +12,7 @@ import ManualModule from './components/ManualModule';
 import CampaignModule from './components/CampaignModule';
 import LibraryModule from './components/LibraryModule';
 import ReportsModule from './components/ReportsModule';
+import PlannerModule from './components/PlannerModule';
 
 const DashboardLayout: React.FC = () => {
   const { user } = useAuth();
@@ -25,6 +26,7 @@ const DashboardLayout: React.FC = () => {
       case ModuleType.RESOURCES: return <LibraryModule />;
       case ModuleType.CAMPAIGNS: return <CampaignModule />;
       case ModuleType.REPORTS: return <ReportsModule />;
+      case ModuleType.PLANNER: return <PlannerModule />;
       default: return <CRMModule />;
     }
   };
@@ -34,7 +36,8 @@ const DashboardLayout: React.FC = () => {
     { id: ModuleType.WIKI, label: 'Wiki Interna', sub: 'Manual Operativo', number: '02', icon: <BookOpen size={18} /> },
     { id: ModuleType.RESOURCES, label: 'Recursos', sub: 'Biblioteca Global', number: '03', icon: <Bookmark size={18} /> },
     { id: ModuleType.CAMPAIGNS, label: 'Marketing', sub: 'Campañas & Pitch', number: '04', icon: <Megaphone size={18} /> },
-    { id: ModuleType.REPORTS, label: 'Reportes', sub: 'Métricas KPI', number: '05', icon: <BarChart2 size={18} /> },
+    { id: ModuleType.PLANNER, label: 'Planner', sub: 'Tareas & Diseño', number: '05', icon: <ClipboardList size={18} /> },
+    { id: ModuleType.REPORTS, label: 'Reportes', sub: 'Métricas KPI', number: '06', icon: <BarChart2 size={18} /> },
   ];
 
   if (!user) {

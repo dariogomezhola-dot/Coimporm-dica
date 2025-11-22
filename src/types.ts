@@ -5,6 +5,7 @@ export enum ModuleType {
   CAMPAIGNS = 'CAMPAIGNS',
   RESOURCES = 'RESOURCES',
   REPORTS = 'REPORTS',
+  PLANNER = 'PLANNER',
 }
 
 export interface Lead {
@@ -23,6 +24,25 @@ export interface Lead {
   qualification?: 'Suspect' | 'MQL' | 'SQL' | 'Opportunity';
   temperature?: 'Hot' | 'Warm' | 'Cold'; 
   responseTime?: number; // in minutes
+}
+
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+export interface PlannerTask {
+  id: string;
+  title: string;
+  description: string;
+  status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  dueDate: string;
+  assignee: string; // Name or Email
+  labels: string[]; // e.g. ["Design", "Copy", "Strategy"]
+  createdAt: string;
+  subtasks?: SubTask[];
 }
 
 export interface ChatMessage {
