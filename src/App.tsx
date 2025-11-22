@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ModuleType } from './types';
-import { BookOpen, Megaphone, Bookmark, BarChart2, Menu, LogOut, LayoutDashboard, ClipboardList } from 'lucide-react';
+import { BookOpen, Megaphone, Bookmark, BarChart2, Menu, LogOut, LayoutDashboard, ClipboardList, Truck } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { auth } from './firebase';
 import Login from './components/Login';
@@ -13,6 +13,7 @@ import CampaignModule from './components/CampaignModule';
 import LibraryModule from './components/LibraryModule';
 import ReportsModule from './components/ReportsModule';
 import PlannerModule from './components/PlannerModule';
+import LogisticsModule from './components/LogisticsModule';
 
 const DashboardLayout: React.FC = () => {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ const DashboardLayout: React.FC = () => {
       case ModuleType.CAMPAIGNS: return <CampaignModule />;
       case ModuleType.REPORTS: return <ReportsModule />;
       case ModuleType.PLANNER: return <PlannerModule />;
+      case ModuleType.LOGISTICS: return <LogisticsModule />;
       default: return <CRMModule />;
     }
   };
@@ -37,7 +39,8 @@ const DashboardLayout: React.FC = () => {
     { id: ModuleType.RESOURCES, label: 'Recursos', sub: 'Biblioteca Global', number: '03', icon: <Bookmark size={18} /> },
     { id: ModuleType.CAMPAIGNS, label: 'Marketing', sub: 'Campañas & Pitch', number: '04', icon: <Megaphone size={18} /> },
     { id: ModuleType.PLANNER, label: 'Planner', sub: 'Tareas & Diseño', number: '05', icon: <ClipboardList size={18} /> },
-    { id: ModuleType.REPORTS, label: 'Reportes', sub: 'Métricas KPI', number: '06', icon: <BarChart2 size={18} /> },
+    { id: ModuleType.LOGISTICS, label: 'Logística', sub: 'Rutas & Mensajería', number: '06', icon: <Truck size={18} /> },
+    { id: ModuleType.REPORTS, label: 'Reportes', sub: 'Métricas KPI', number: '07', icon: <BarChart2 size={18} /> },
   ];
 
   if (!user) {
@@ -73,7 +76,7 @@ const DashboardLayout: React.FC = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-140px)]">
+        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-140px)] custom-scrollbar">
           {navItems.map((item) => (
             <div
               key={item.id}

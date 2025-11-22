@@ -6,6 +6,7 @@ export enum ModuleType {
   RESOURCES = 'RESOURCES',
   REPORTS = 'REPORTS',
   PLANNER = 'PLANNER',
+  LOGISTICS = 'LOGISTICS',
 }
 
 export interface Lead {
@@ -44,6 +45,26 @@ export interface PlannerTask {
   labels: string[]; // e.g. ["Design", "Copy", "Strategy"]
   createdAt: string;
   subtasks?: SubTask[];
+}
+
+export interface DeliveryItem {
+  id: string;
+  name: string;
+  checked: boolean; // Loaded/Picked up
+}
+
+export interface LogisticsRoute {
+  id: string;
+  title: string; // e.g. "Ruta Norte - Clínicas"
+  responsible: string;
+  date: string;
+  status: 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  vehicleType: 'MOTO' | 'CAR' | 'TRUCK';
+  destination: string;
+  items: DeliveryItem[];
+  observations?: string;
+  createdAt: string;
 }
 
 export interface ChatMessage {
